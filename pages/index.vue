@@ -1,5 +1,6 @@
 <template>
-  <div class="eble-page">
+  <span v-if="pagesNumber === 1 && !onlyOneBool"></span>
+  <div class="eble-page" v-else>
     <span
       v-if="firstLastPage"
       :class="{'forbid-page': 1 === chooseNumber}"
@@ -34,20 +35,28 @@
       @click="changeNumber(pagesNumber)"
     >&gt;&gt;</span>
     <p class="jump-page">
-      跳转
+      Jump
       <input type="text" v-model="jumpNumber">
-      页
+      page
       <button @click="jumpNumberFun">Go</button>
     </p>
+    <WarnAlter
+      v-if="isDisplayAlter"
+      @closeAlter="closeAlter"
+      :alterBool="alterBool"
+      :alterText="alterText"
+    />
   </div>
 </template>
 
 <script>
 import Less from "./less";
 import Greater from "./greater";
+import WarnAlter from "./warnAlter";
+import { setTimeout } from "timers";
 export default {
   name: "Pager",
-  components: { Less, Greater },
+  components: { Less, Greater, WarnAlter },
   props: {
     pagesNumber: {
       type: Number,
@@ -65,11 +74,24 @@ export default {
       type: Boolean,
       default: true
     },
+    onlyOneBool: {
+      type: Boolean,
+      default: false
+    },
+    isDisplayAlter: {
+      type: Boolean,
+      default: true
+    },
     performFun: {
       type: Function,
-      // 对象或数组默认值必须从一个工厂函数获取
       default: number => {
         return number;
+      }
+    },
+    customAlterFun: {
+      type: Function,
+      default: function() {
+        return null;
       }
     }
   },
@@ -77,7 +99,10 @@ export default {
     return {
       pagesArr: [],
       chooseNumber: 1,
-      jumpNumber: ""
+      jumpNumber: "",
+      alterBool: false,
+      alterText: "",
+      alterTimer: null
     };
   },
   created() {
@@ -87,7 +112,16 @@ export default {
     }
     this.pagesArr = temporaryArr;
   },
+  beforeDestroy() {
+    if (this.alterTimer) {
+      clearTimeout(this.alterTimer);
+    }
+  },
   methods: {
+    closeAlter() {
+      this.alterBool = false;
+      clearTimeout(this.alterTimer);
+    },
     callbackFun() {
       if (this.performFun) {
         this.$emit("performFun", this.chooseNumber);
@@ -113,6 +147,16 @@ export default {
       ) {
         this.chooseNumber = parseInt(this.jumpNumber, 10);
         this.callbackFun();
+      } else {
+        this.alterText = `Please enter number from 1 ~ ${this.pagesNumber}`;
+        this.alterBool = true;
+        this.customAlterFun();
+        if (this.alterTimer) {
+          clearTimeout(this.alterTimer);
+        }
+        this.alterTimer = setTimeout(() => {
+          this.alterBool = false;
+        }, 1000);
       }
     }
   },
@@ -134,7 +178,7 @@ export default {
   margin: 0 auto;
   text-align: center;
 }
-.eble-page div,
+.eble-page,
 .eble-page ul {
   padding: 0;
   margin: 0;
